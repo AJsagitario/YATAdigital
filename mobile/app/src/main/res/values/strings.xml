@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">billetera_digital</string>
+    <string name="back">Atrás</string>
+    <string name="confirm">Confirmar</string>
+    <string name="continue_">Continuar</string>
+    <string name="copy">Copiar</string>
+    <string name="share">Compartir</string>
+    <string name="history">Historial</string>
+    <string name="receive">Recibir</string>
+    <string name="send">Yapear</string>
+</resources>
