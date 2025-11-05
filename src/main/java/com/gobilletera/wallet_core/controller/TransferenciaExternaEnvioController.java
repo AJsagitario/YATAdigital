@@ -6,20 +6,28 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.bind.annotation.*;
 
 import com.gobilletera.wallet_core.model.Movimiento;
 import com.gobilletera.wallet_core.model.TransferenciaRequest;
 import com.gobilletera.wallet_core.model.Usuario;
 import com.gobilletera.wallet_core.repository.MovimientoRepository;
 import com.gobilletera.wallet_core.repository.UsuarioRepository;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/externo")
 @CrossOrigin("*")
 public class TransferenciaExternaEnvioController {
+
+    private static final String CENTRAL_API_URL = "https://billetera-central-api.onrender.com/api/v1/transfer";
+    private static final String CENTRAL_TOKEN = "token";
+    private static final String APP_NAME = "YaTa";
+
     private final UsuarioRepository usuarioRepository;
     private final MovimientoRepository movimientoRepository;
     private final RestTemplate restTemplate = new RestTemplate();
@@ -37,24 +45,31 @@ public class TransferenciaExternaEnvioController {
             String dniDestino = req.getDestino();
             BigDecimal monto = BigDecimal.valueOf(req.getMonto());
 
-            // validar saldo/existencia
+            // Validar saldo y existencia
             Usuario origen = usuarioRepository.findById(dniOrigen).orElse(null);
             if (origen == null || origen.getSaldo().compareTo(monto) < 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Saldo insuficiente o usuario no encontrado"));
             }
-            // Llamar a la API Central
-            String apiCentralUrl = "https://billetera-central-api.onrender.com/api/transfer";
+
+            // Construir request hacia la API central con el formato correcto del README
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-API-Token", CENTRAL_TOKEN);
 
             Map<String, Object> payload = new HashMap<>();
-            payload.put("app_name", "YaTa");
-            payload.put("token", "en espera");
-            payload.put("dniOrigen", dniOrigen);
-            payload.put("dniDestino", dniDestino);
+            payload.put("fromIdentifier", dniOrigen);
+            payload.put("toIdentifier", dniDestino);
+            payload.put("toAppName", APP_NAME);
             payload.put("monto", req.getMonto());
+            payload.put("descripcion", req.getMensaje() != null ? req.getMensaje() : "Transferencia desde YaTa");
 
-            ResponseEntity<String> respuestaCentral = restTemplate.postForEntity(apiCentralUrl, payload, String.class);
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
 
-            // Si fue exitosa, resta saldo y guarda movimiento
+            // Enviar solicitud a la API central
+            ResponseEntity<String> respuestaCentral = restTemplate.postForEntity(
+                    CENTRAL_API_URL, requestEntity, String.class);
+
+            // Si fue exitosa, actualizamos saldo y guardamos el movimiento
             if (!respuestaCentral.getStatusCode().is2xxSuccessful()) {
                 return ResponseEntity.status(502).body(Map.of("error", "API central rechazó la operación"));
             }
@@ -67,15 +82,14 @@ public class TransferenciaExternaEnvioController {
             mov.setDniOrigen(dniOrigen);
             mov.setDniDestino(dniDestino);
             mov.setMonto(monto);
-            mov.setMensaje(req.getMensaje() != null ? req.getMensaje() : "Transferencia exitosa");
+            mov.setMensaje(req.getMensaje() != null ? req.getMensaje() : "Transferencia externa exitosa");
             mov.setCodigoTransferencia(UUID.randomUUID().toString().substring(0, 8));
             mov.setFechaHora(LocalDateTime.now());
             movimientoRepository.save(mov);
 
-            return ResponseEntity.ok(Map.of("status", "ok"));
+            return ResponseEntity.ok(Map.of("status", "ok", "msg", "Transferencia enviada correctamente"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-
     }
 }

@@ -5,21 +5,21 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.gobilletera.wallet_core.model.Movimiento;
 import com.gobilletera.wallet_core.model.Usuario;
 import com.gobilletera.wallet_core.repository.MovimientoRepository;
 import com.gobilletera.wallet_core.repository.UsuarioRepository;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-
 @RestController
 @RequestMapping("/api/externo")
+@CrossOrigin("*")
 public class TransferenciaExternaController {
+
+    private static final String CENTRAL_TOKEN = "token";
 
     private final UsuarioRepository usuarioRepository;
     private final MovimientoRepository movimientoRepository;
@@ -31,38 +31,58 @@ public class TransferenciaExternaController {
     }
 
     @PostMapping("/depositar")
-    public ResponseEntity<?> recibirTransferenciaExterna(@RequestBody Map<String, Object> payload) {
-        try {
-            // lo que la API central nos envía
-            String dniDestino = (String) payload.get("dniDestino");
-            Double monto = Double.valueOf(payload.get("monto").toString());
-            String appOrigen = (String) payload.get("app_name");
+    public ResponseEntity<?> recibirTransferenciaExterna(
+            @RequestHeader(name = "X-API-Token", required = false) String token,
+            @RequestBody Map<String, Object> payload) {
 
-            // validacion si el usuario exisste
-            Usuario usuario = usuarioRepository.findById(dniDestino).orElse(null);
-            if (usuario == null) {
-                return ResponseEntity.status(404).body(Map.of("error", "Usuario no encontrado"));
+        try {
+            // validar token
+            if (token == null || !token.equals(CENTRAL_TOKEN)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("success", false, "msg", "token inválido"));
             }
 
-            // actualiar saldo
-            usuario.setSaldo(usuario.getSaldo().add(BigDecimal.valueOf(monto)));
+            // leer lo que manda la API central
+            String walletId = (String) payload.get("internalWalletId"); // en tu caso es el DNI
+            String fromAppName = (String) payload.get("fromAppName");
+            Double monto = Double.valueOf(payload.get("monto").toString());
+            String descripcion = (String) payload.getOrDefault("descripcion", "Depósito externo");
+            String centralTxId = (String) payload.get("centralTransactionId");
+
+            // buscar al usuario (tu llave es el DNI)
+            Usuario usuario = usuarioRepository.findById(walletId).orElse(null);
+            if (usuario == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "success", false,
+                        "msg", "usuario no encontrado"));
+            }
+
+            // actualizar saldo
+            usuario.setSaldo(
+                    usuario.getSaldo().add(BigDecimal.valueOf(monto)));
             usuarioRepository.save(usuario);
 
-            // registrar movimiento en nuestro billetera
+            // registrar movimiento
             Movimiento mov = new Movimiento();
             mov.setId(UUID.randomUUID());
-            mov.setDniOrigen(appOrigen);
-            mov.setDniDestino(dniDestino);
+
+            mov.setDniOrigen(fromAppName);
+            mov.setDniDestino(walletId);
             mov.setMonto(BigDecimal.valueOf(monto));
-            mov.setMensaje("DEPÓSITO RECIBIDO DE " + appOrigen);
-            mov.setCodigoTransferencia(UUID.randomUUID().toString().substring(0, 8));
+            mov.setMensaje(descripcion + " desde " + fromAppName);
+            mov.setCodigoTransferencia(
+                    centralTxId != null ? centralTxId : UUID.randomUUID().toString().substring(0, 8));
             mov.setFechaHora(LocalDateTime.now());
             movimientoRepository.save(mov);
 
-            return ResponseEntity.ok(Map.of("status", "ok", "msg", "Transferencia recibida en YaTa"));
-        } catch (Exception e) {
-            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
-        }
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "localTransactionId", mov.getId().toString()));
 
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(Map.of(
+                    "success", false,
+                    "msg", e.getMessage()));
+        }
     }
 }
