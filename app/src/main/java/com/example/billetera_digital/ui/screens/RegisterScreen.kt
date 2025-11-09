@@ -3,24 +3,26 @@
 package com.example.billetera_digital.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.billetera_digital.ApiUtils
+import com.example.billetera_digital.model.UsuarioDto
+import com.example.billetera_digital.model.request
 import com.example.billetera_digital.ui.components.SixDigitPinField
-
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.TopAppBar
-
-
+import com.example.billetera_digital.ui.state.UserViewModel
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 @Composable
 fun RegisterScreen(
+    userViewModel: UserViewModel,          // 👈 lo recibimos
     onContinue: () -> Unit,
     onBack: () -> Unit = {}
 ) {
@@ -48,7 +50,10 @@ fun RegisterScreen(
                 title = { Text("Crear cuenta") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Atrás"
+                        )
                     }
                 }
             )
@@ -63,27 +68,37 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             OutlinedTextField(
-                value = name, onValueChange = { name = it },
+                value = name,
+                onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Nombre") }, singleLine = true
+                label = { Text("Nombre") },
+                singleLine = true
             )
             OutlinedTextField(
-                value = alias, onValueChange = { alias = it },
+                value = alias,
+                onValueChange = { alias = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("(@usuario)") }, singleLine = true
+                label = { Text("(@usuario)") },
+                singleLine = true
             )
             OutlinedTextField(
-                value = phone, onValueChange = { phone = it.filter(Char::isDigit) },
+                value = phone,
+                onValueChange = { phone = it.filter(Char::isDigit) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Celular") }, singleLine = true,
+                label = { Text("Celular") },
+                singleLine = true,
             )
             OutlinedTextField(
-                value = email, onValueChange = { email = it },
+                value = email,
+                onValueChange = { email = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Correo") }, singleLine = true,
+                label = { Text("Correo") },
+                singleLine = true,
                 isError = email.isNotBlank() && !emailOk,
                 supportingText = {
-                    if (email.isNotBlank() && !emailOk) Text("Correo no válido")
+                    if (email.isNotBlank() && !emailOk) {
+                        Text("Correo no válido")
+                    }
                 }
             )
 
@@ -112,10 +127,45 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = onContinue,   // TODO: guardar/usar el PIN tras OTP
+                onClick = {
+                    val phoneDigits = phone.filter(Char::isDigit)
+
+                    // este es el body que tu backend espera
+                    val req = request(
+                        dni = phoneDigits,       // según tu backend usan el celular como “dni”
+                        nombre = name,
+                        contacto = phoneDigits,
+                        pin = pin
+                    )
+
+                    ApiUtils.api.crearUsuario(req)
+                        .enqueue(object : Callback<UsuarioDto> {
+                            override fun onResponse(
+                                call: Call<UsuarioDto>,
+                                response: Response<UsuarioDto>
+                            ) {
+                                if (response.isSuccessful && response.body() != null) {
+                                    // 👇 ahora sí, tenemos el viewmodel
+                                    userViewModel.setFromDto(response.body()!!)
+                                    // y como no quieres OTP, aquí llamas directo
+                                    onContinue()
+                                } else {
+                                    // aquí podrías mostrar "ya existe ese dni"
+                                }
+                            }
+
+                            override fun onFailure(call: Call<UsuarioDto>, t: Throwable) {
+                                // aquí manejas error de red
+                            }
+                        })
+                },
                 enabled = enabled,
-                modifier = Modifier.fillMaxWidth().height(52.dp)
-            ) { Text("Continuar") }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Text("Continuar")
+            }
         }
     }
 }

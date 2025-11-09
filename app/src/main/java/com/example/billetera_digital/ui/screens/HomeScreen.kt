@@ -1,102 +1,97 @@
 package com.example.billetera_digital.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.billetera_digital.ui.components.AppTopBar
+import com.example.billetera_digital.ui.state.UserViewModel
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 
-import java.util.Locale
 @Composable
 fun HomeScreen(
+    userViewModel: UserViewModel,
     onYapear: () -> Unit,
     onReceive: () -> Unit,
     onHistory: () -> Unit
 ) {
-    Scaffold(topBar = { AppTopBar(title = "Inicio") }) { p ->
-        Column(
-            Modifier
-                .padding(p)
-                .padding(16.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    val saldo = userViewModel.saldo   // 👈 ahora viene del backend
 
-            // saldo mock
-            BalanceCard(balance = 2458.50, modifier = Modifier.padding(horizontal = 16.dp))
-
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = onYapear,
-                    modifier = Modifier.weight(1f).height(48.dp)
-                ) { Text("Transferir") }
-
-                OutlinedButton(
-                    onClick = onReceive,
-                    modifier = Modifier.weight(1f).height(48.dp)
-                ) { Text("Recibir") }
-
-                OutlinedButton(
-                    onClick = onHistory,
-                    modifier = Modifier.weight(1f).height(48.dp)
-                ) { Text("Historial") }
-            }
-
-            // aquí podrías listar movimientos mock
-            Spacer(Modifier.weight(1f))
-        }
-    }
-}
-
-
-@Composable
-private fun BalanceCard(
-    balance: Double,
-    modifier: Modifier = Modifier
-) {
-    var visible by rememberSaveable { mutableStateOf(true) }
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+
+        Text("Inicio", style = MaterialTheme.typography.headlineSmall)
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            Column {
-                Text("Saldo disponible", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    text = if (visible) formatPen(balance) else "••••••",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Saldo disponible", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = "S/ ${"%,.2f".format(saldo)}",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Outlined.VisibilityOff,
+                    contentDescription = null
                 )
             }
-            IconButton(onClick = { visible = !visible }) {
-                val icon = if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility
-                val cd = if (visible) "Ocultar saldo" else "Mostrar saldo"
-                Icon(imageVector = icon, contentDescription = cd)
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = onYapear,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Transferir")
+            }
+            Button(
+                onClick = onReceive,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Recibir")
+            }
+            Button(
+                onClick = onHistory,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Historial")
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
-
-private fun formatPen(amount: Double): String =
-    "S/ " + String.format(Locale("es", "PE"), "%,.2f", amount)

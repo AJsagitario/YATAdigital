@@ -1,31 +1,29 @@
 package com.example.billetera_digital.ui.screens
 
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.billetera_digital.ui.state.SendViewModel
-import androidx.compose.runtime.remember
-
-import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.billetera_digital.ui.state.SendViewModel
+import com.example.billetera_digital.ui.state.UserViewModel
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.History
-
-import com.example.billetera_digital.ui.screens.OtpScreen
-
-
+// ================== RUTAS ==================
 object Routes {
     const val Splash = "splash"
     const val Home = "home"
@@ -43,241 +41,266 @@ object Routes {
     const val SendConfirm = "send_confirm"
     const val Success = "success"
     const val Receive = "receive"
+
+    // auth
     const val Login = "login"
     const val Register = "register"
     const val Otp = "otp"
+}
 
-    private data class Tab(val route: String, val label: String, val icon: ImageVector)
+@Composable
+fun AppNav() {
+    val navController = rememberNavController()
 
-    @Composable
+    // compartido entre login/register/perfil
+    val userViewModel: UserViewModel = viewModel()
 
-    fun AppNav() {
-        val nav = rememberNavController()
+    data class Tab(val route: String, val label: String, val icon: ImageVector)
+    val tabs = listOf(
+        Tab(Routes.Home, "Inicio", Icons.Outlined.Home),
+        Tab(Routes.History, "Historial", Icons.Outlined.History),
+        Tab(Routes.Profile, "Perfil", Icons.Outlined.Person)
+    )
 
-        data class Tab(val route: String, val label: String, val icon: ImageVector)
+    Scaffold(
+        bottomBar = {
+            val backStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = backStackEntry?.destination?.route
+            val showBar = currentRoute in tabs.map { it.route }
 
-        val tabs = listOf(
-            Tab(Routes.Home, "Inicio", Icons.Outlined.Home),
-            Tab(Routes.History, "Historial", Icons.Outlined.History),
-            Tab(Routes.Profile, "Perfil", Icons.Outlined.Person)
-        )
-
-        Scaffold(
-            bottomBar = {
-                val dest = nav.currentBackStackEntryAsState().value?.destination
-                val showBar = dest?.route in tabs.map { it.route }
-                if (showBar) {
-                    NavigationBar {
-                        tabs.forEach { t ->
-                            val selected = dest?.route == t.route
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = {
-                                    if (!selected) nav.navigate(t.route) {
+            if (showBar) {
+                NavigationBar {
+                    tabs.forEach { t ->
+                        val selected = currentRoute == t.route
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                if (!selected) {
+                                    navController.navigate(t.route) {
                                         popUpTo(Routes.Home) { inclusive = false }
                                         launchSingleTop = true
                                     }
-                                },
-                                icon = { Icon(t.icon, contentDescription = null) },
-                                label = { Text(t.label) }
-                            )
-                        }
+                                }
+                            },
+                            icon = { Icon(t.icon, contentDescription = null) },
+                            label = { Text(t.label) }
+                        )
                     }
                 }
             }
-        ) { p ->
-            NavHost(
-                navController = nav,
-                startDestination = Routes.Splash,
-                modifier = Modifier.padding(p),
-                route = "root" // scope para el VM compartido
-            ) {
-                composable(Routes.Splash) {
-                    SplashScreen(
-                        onCreate = {
-                            nav.navigate(Routes.Register) {
-                                popUpTo(Routes.Splash) {
-                                    inclusive = false
-                                }
-                            }
-                        },
-                        onLogin = {
-                            nav.navigate(Routes.Login) {
-                                popUpTo(Routes.Splash) {
-                                    inclusive = false
-                                }
-                            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Routes.Splash,
+            modifier = Modifier.padding(innerPadding),
+            route = "root"        // scope para compartir SendViewModel
+        ) {
+            // ========== SPLASH ==========
+            composable(Routes.Splash) {
+                SplashScreen(
+                    onCreate = {
+                        navController.navigate(Routes.Register) {
+                            popUpTo(Routes.Splash) { inclusive = true }
                         }
-                    )
-                }
-
-                composable(Routes.Login) {
-                    LoginScreen(
-                        onOk = {
-                            nav.navigate(Routes.Home) {
-                                popUpTo(Routes.Home) {
-                                    inclusive = true
-                                }
-                            }
-                        },
-                        onForgot = { nav.navigate(Routes.PinCurrent) },
-                        onRegister = { nav.navigate(Routes.Register) },
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                composable(Routes.Register) {
-                    RegisterScreen(
-                        onContinue = { nav.navigate(Routes.Otp) },
-                        onBack = { nav.popBackStack() })
-                }
-
-                composable(Routes.Otp) {
-                    OtpScreen(
-                        onVerify = {
-                            nav.navigate(Routes.Home) {
-                                popUpTo(Routes.Home) {
-                                    inclusive = true
-                                }
-                            }
-                        },
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // Principal
-                composable(Routes.Home) {
-                    HomeScreen(
-                        onYapear = { nav.navigate(Routes.Search) },
-                        onReceive = { nav.navigate(Routes.Receive) },
-                        onHistory = { nav.navigate(Routes.History) }
-                    )
-                }
-                composable(Routes.History) { HistoryScreen() }
-
-                // Perfil
-                composable(Routes.Profile) {
-                    ProfileScreen(
-                        onOpenData = { nav.navigate(Routes.ProfileData) },
-                        onChangePin = { nav.navigate(Routes.PinCurrent) },
-                        onLogout = {
-                            nav.navigate(Routes.Splash) {
-                                popUpTo(Routes.Home) {
-                                    inclusive = true
-                                }
-                            }
+                    },
+                    onLogin = {
+                        navController.navigate(Routes.Login) {
+                            popUpTo(Routes.Splash) { inclusive = true }
                         }
-                    )
-                }
-                composable(Routes.ProfileData) { ProfileDataScreen(onBack = { nav.popBackStack() }) }
+                    }
+                )
+            }
 
-                // 1) PIN actual -> Nuevo PIN
-                composable(Routes.PinCurrent) {
-                    PinCurrentScreen(
-                        onOk   = { nav.navigate(Routes.PinNew) },
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // 2) Nuevo PIN: guarda en SavedState y navega
-                composable(Routes.PinNew) {
-                    PinNewScreen(
-                        onNext = { newPin ->
-                            nav.currentBackStackEntry
-                                ?.savedStateHandle
-                                ?.set("newPin", newPin)
-                            nav.navigate(Routes.PinConfirm)
-                        },
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // 3) Confirmar: lee el PIN guardado
-                composable(Routes.PinConfirm) {
-                    val firstPin = nav.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.get<String>("newPin") ?: ""
-
-                    PinConfirmScreen(
-                        firstPin = firstPin,
-                        onOk     = { nav.navigate(Routes.PinSuccess) },
-                        onBack   = { nav.popBackStack() }
-                    )
-                }
-
-                composable(Routes.PinSuccess) {
-                    PinSuccessScreen(onHome = {
-                        nav.navigate(Routes.Profile) {
-                            popUpTo(Routes.Profile) {
-                                inclusive = true
-                            }
+            // ========== LOGIN ==========
+            composable(Routes.Login) {
+                LoginScreen(
+                    userViewModel = userViewModel,
+                    onOk = {
+                        navController.navigate(Routes.Home) {
+                            popUpTo(Routes.Home) { inclusive = true }
                         }
-                    })
-                }
+                    },
+                    onForgot = { navController.navigate(Routes.PinCurrent) },
+                    onRegister = { navController.navigate(Routes.Register) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
 
-                // Envío: Buscar contacto
-                composable(Routes.Search) { backStackEntry ->
-                    val parent = remember(backStackEntry) { nav.getBackStackEntry("root") }
-                    val vm: SendViewModel = viewModel(parent)
-                    SearchContactScreen(
-                        vm = vm,
-                        onPicked = { nav.navigate(Routes.Amount) },
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // Envío: Monto
-                composable(Routes.Amount) { backStackEntry ->
-                    val parent = remember(backStackEntry) { nav.getBackStackEntry("root") }
-                    val vm: SendViewModel = viewModel(parent)
-                    AmountScreen(
-                        vm = vm,
-                        onNext = { nav.navigate(Routes.SendConfirm) },
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // Envío: Confirmar con PIN
-                composable(Routes.SendConfirm) { backStackEntry ->
-                    val parentEntry = remember(backStackEntry) { nav.getBackStackEntry("root") }
-                    val vm: SendViewModel = viewModel(parentEntry)
-                    ConfirmPinScreen(
-                        vm = vm,
-                        onBack = { nav.popBackStack() },
-                        onOk = {
-                            nav.navigate(Routes.Success) {
-                                popUpTo(Routes.Home) {
-                                    inclusive = false
-                                }
-                            }
+            // ========== REGISTER ==========
+            composable(Routes.Register) {
+                RegisterScreen(
+                    userViewModel = userViewModel,
+                    onContinue = {
+                        navController.navigate(Routes.Home) {
+                            popUpTo(Routes.Home) { inclusive = true }
                         }
-                    )
-                }
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
 
-                // Recibir
-                composable(Routes.Receive) { ReceiveScreen(onBack = { nav.popBackStack() }) }
-
-                // Éxito
-                composable(Routes.Success) { backStackEntry ->
-                    val parentEntry = remember(backStackEntry) { nav.getBackStackEntry("root") }
-                    val vm: SendViewModel = viewModel(parentEntry)
-
-                    SuccessScreen(
-                        alias  = vm.contact?.alias ?: "-",
-                        wallet = vm.contact?.wallet ?: "-",
-                        amount = vm.amount,
-                        onHome = {
-                            vm.clear()
-                            nav.navigate(Routes.Home) {
-                                popUpTo(Routes.Home) { inclusive = true }
-                                launchSingleTop = true
-                            }
+            // ========== OTP (si lo usas) ==========
+            composable(Routes.Otp) {
+                OtpScreen(
+                    onVerify = {
+                        navController.navigate(Routes.Home) {
+                            popUpTo(Routes.Home) { inclusive = true }
                         }
-                    )
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            // ========== PRINCIPAL ==========
+            composable(Routes.Home) {
+                HomeScreen(
+                    userViewModel = userViewModel,
+                    onYapear = { navController.navigate(Routes.Search) },
+                    onReceive = { navController.navigate(Routes.Receive) },
+                    onHistory = { navController.navigate(Routes.History) }
+                )
+            }
+
+            composable(Routes.History) {
+                HistoryScreen()
+            }
+
+            // ========== PERFIL ==========
+            composable(Routes.Profile) {
+                ProfileScreen(
+                    onOpenData = { navController.navigate(Routes.ProfileData) },
+                    onChangePin = { navController.navigate(Routes.PinCurrent) },
+                    onLogout = {
+                        navController.navigate(Routes.Splash) {
+                            popUpTo(Routes.Home) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(Routes.ProfileData) {
+                ProfileDataScreen(
+                    userViewModel = userViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            // ========== CAMBIO DE PIN ==========
+            composable(Routes.PinCurrent) {
+                PinCurrentScreen(
+                    onOk = { navController.navigate(Routes.PinNew) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.PinNew) {
+                PinNewScreen(
+                    onNext = { newPin ->
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("newPin", newPin)
+                        navController.navigate(Routes.PinConfirm)
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.PinConfirm) {
+                val firstPin = navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>("newPin") ?: ""
+
+                PinConfirmScreen(
+                    firstPin = firstPin,
+                    onOk = { navController.navigate(Routes.PinSuccess) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.PinSuccess) {
+                PinSuccessScreen(
+                    onHome = {
+                        navController.navigate(Routes.Profile) {
+                            popUpTo(Routes.Profile) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // ========== ENVIAR DINERO ==========
+            composable(Routes.Search) { backStackEntry ->
+                // ⬅️ aquí va el remember
+                val parent = remember(backStackEntry) {
+                    navController.getBackStackEntry("root")
                 }
+                val vm: SendViewModel = viewModel(parent)
+                SearchContactScreen(
+                    vm = vm,
+                    onPicked = { navController.navigate(Routes.Amount) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.Amount) { backStackEntry ->
+                val parent = remember(backStackEntry) {
+                    navController.getBackStackEntry("root")
+                }
+                val vm: SendViewModel = viewModel(parent)
+                AmountScreen(
+                    vm = vm,
+                    onNext = { navController.navigate(Routes.SendConfirm) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.SendConfirm) { backStackEntry ->
+                // este sí lo seguimos sacando del scope "root"
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry("root")
+                }
+                val sendVm: SendViewModel = viewModel(parentEntry)
+
+                // OJO: acá NO creamos otro UserViewModel,
+                // usamos el que ya declaraste arriba en AppNav()
+                ConfirmPinScreen(
+                    vm = sendVm,
+                    userVm = userViewModel,   // <-- este es el bueno
+                    onBack = { navController.popBackStack() },
+                    onOk = {
+                        // si todo salió bien en backend, vamos al éxito
+                        navController.navigate(Routes.Success) {
+                            popUpTo(Routes.Home) { inclusive = false }
+                        }
+                    }
+                )
+            }
+
+
+            // ========== RECIBIR ==========
+            composable(Routes.Receive) {
+                ReceiveScreen(onBack = { navController.popBackStack() })
+            }
+
+            // ========== ÉXITO ==========
+            composable(Routes.Success) { backStackEntry ->
+                val parent = remember(backStackEntry) {
+                    navController.getBackStackEntry("root")
+                }
+                val vm: SendViewModel = viewModel(parent)
+                SuccessScreen(
+                    alias = vm.contact?.alias ?: "-",
+                    wallet = vm.contact?.wallet ?: "-",
+                    amount = vm.amount,
+                    onHome = {
+                        vm.clear()
+                        navController.navigate(Routes.Home) {
+                            popUpTo(Routes.Home) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
         }
     }
 }
-
-

@@ -4,25 +4,86 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.example.billetera_digital.model.UsuarioDto
 
 class UserViewModel : ViewModel() {
-    var name   by mutableStateOf("Astrit Carolina")
-        private set
-    var alias  by mutableStateOf("@astrit")
-        private set
-    var phone  by mutableStateOf("999 888 777")
-        private set
-    var email  by mutableStateOf("astrit@example.com")
+
+    // -------- datos de perfil que muestras en pantallas --------
+    var dni by mutableStateOf("")
         private set
 
-    var biometricsEnabled        by mutableStateOf(true)
+    var name by mutableStateOf("")
         private set
-    var onlinePurchasesEnabled   by mutableStateOf(false)
+
+    var alias by mutableStateOf("")
         private set
+
+    var phone by mutableStateOf("")
+        private set
+
+    var email by mutableStateOf("")
+        private set
+
+    // -------- datos que vienen del backend --------
+    var saldo by mutableStateOf(0.0)
+        private set
+
+    var numeroTarjeta by mutableStateOf("")
+        private set
+
+    var ccv by mutableStateOf("")
+        private set
+
+    var fechaVencimiento by mutableStateOf("")
+        private set
+
+    // -------- switches --------
+    var biometricsEnabled by mutableStateOf(true)
+        private set
+
+    var onlinePurchasesEnabled by mutableStateOf(true)
+        private set
+
     var highAmountConfirmEnabled by mutableStateOf(true)
         private set
 
-    fun toggleBiometrics(v: Boolean)        { biometricsEnabled = v }
-    fun toggleOnlinePurchases(v: Boolean)   { onlinePurchasesEnabled = v }
+    // -------- llenar el VM con lo que llega del backend --------
+    fun setFromDto(dto: UsuarioDto) {
+        dni = dto.dni
+        name = dto.nombre
+        phone = dto.contacto ?: ""
+
+        saldo = dto.saldo ?: 0.0
+        numeroTarjeta = dto.numeroTarjeta ?: ""
+        ccv = dto.ccv ?: ""
+        fechaVencimiento = dto.fechaVencimiento ?: ""
+        // alias y email no vienen, se quedan como estaban
+    }
+
+    // --- funciones públicas para editar desde la UI ---
+    fun updateName(value: String) {
+        name = value
+    }
+
+    fun updateAlias(value: String) {
+        alias = value
+    }
+
+    fun updatePhone(value: String) {
+        phone = value
+    }
+
+    fun updateEmail(value: String) {
+        email = value
+    }
+    // --- switches ---
+    fun toggleBiometrics(v: Boolean) { biometricsEnabled = v }
+    fun toggleOnlinePurchases(v: Boolean) { onlinePurchasesEnabled = v }
     fun toggleHighAmountConfirm(v: Boolean) { highAmountConfirmEnabled = v }
+
+    fun discountSaldo(monto: Double) {
+        saldo -= monto
+        if (saldo < 0)
+            saldo = 0.0
+    }
 }

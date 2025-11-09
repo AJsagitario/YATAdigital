@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.example.billetera_digital.ui.theme.BilleteraTheme
+import com.example.billetera_digital.ui.screens.AppNav
 import com.example.billetera_digital.ui.screens.Routes   // <- importa el objeto
 
 class MainActivity : ComponentActivity() {
@@ -11,7 +12,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             BilleteraTheme {
-                Routes.AppNav()
+                AppNav()
             }
         }
     }
