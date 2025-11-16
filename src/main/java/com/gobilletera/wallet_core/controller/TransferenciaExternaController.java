@@ -19,7 +19,7 @@ import com.gobilletera.wallet_core.repository.UsuarioRepository;
 @CrossOrigin("*")
 public class TransferenciaExternaController {
 
-    private static final String CENTRAL_TOKEN = "token";
+    private static final String CENTRAL_TOKEN = "sk_yata_b7c8d9e0f1g2h3i4";
 
     private final UsuarioRepository usuarioRepository;
     private final MovimientoRepository movimientoRepository;

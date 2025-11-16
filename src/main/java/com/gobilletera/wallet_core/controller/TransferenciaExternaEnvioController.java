@@ -24,16 +24,22 @@ import com.gobilletera.wallet_core.repository.UsuarioRepository;
 @CrossOrigin("*")
 public class TransferenciaExternaEnvioController {
 
-    private static final String CENTRAL_API_URL = "https://billetera-central-api.onrender.com/api/v1/transfer";
-    private static final String CENTRAL_TOKEN = "token";
-    private static final String APP_NAME = "YaTa";
+    // Endpoint de la API central
+    private static final String CENTRAL_API_URL =
+            "https://billetera-central-api.onrender.com/api/v1/transfer";
+
+    // TOKEN DE NUESTRO GRUPO EN LA API CENTRAL
+    private static final String CENTRAL_TOKEN = "sk_yata_b7c8d9e0f1g2h3i4";
+
+    // NOMBRE DE LA APP DESTINO REGISTRADA EN LA API CENTRAL (Khipu)
+    private static final String APP_NAME = "Khipu";
 
     private final UsuarioRepository usuarioRepository;
     private final MovimientoRepository movimientoRepository;
     private final RestTemplate restTemplate = new RestTemplate();
 
     public TransferenciaExternaEnvioController(UsuarioRepository usuarioRepository,
-            MovimientoRepository movimientoRepository) {
+                                               MovimientoRepository movimientoRepository) {
         this.usuarioRepository = usuarioRepository;
         this.movimientoRepository = movimientoRepository;
     }
@@ -45,35 +51,42 @@ public class TransferenciaExternaEnvioController {
             String dniDestino = req.getDestino();
             BigDecimal monto = BigDecimal.valueOf(req.getMonto());
 
-            // Validar saldo y existencia
+            // Validar saldo y existencia en YaTa
             Usuario origen = usuarioRepository.findById(dniOrigen).orElse(null);
             if (origen == null || origen.getSaldo().compareTo(monto) < 0) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Saldo insuficiente o usuario no encontrado"));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Saldo insuficiente o usuario no encontrado"));
             }
 
-            // Construir request hacia la API central con el formato correcto del README
+            // Construir request hacia la API central (formato del README)
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("X-API-Token", CENTRAL_TOKEN);
 
             Map<String, Object> payload = new HashMap<>();
-            payload.put("fromIdentifier", dniOrigen);
-            payload.put("toIdentifier", dniDestino);
-            payload.put("toAppName", APP_NAME);
+            payload.put("fromIdentifier", dniOrigen);              // usuario de YaTa (origen)
+            payload.put("toIdentifier", dniDestino);               // identificador en la app destino
+            payload.put("toAppName", APP_NAME);                    // "Khipu"
             payload.put("monto", req.getMonto());
-            payload.put("descripcion", req.getMensaje() != null ? req.getMensaje() : "Transferencia desde YaTa");
+            payload.put("descripcion",
+                    req.getMensaje() != null ? req.getMensaje() : "Transferencia desde YaTa");
 
-            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
+            HttpEntity<Map<String, Object>> requestEntity =
+                    new HttpEntity<>(payload, headers);
 
             // Enviar solicitud a la API central
             ResponseEntity<String> respuestaCentral = restTemplate.postForEntity(
                     CENTRAL_API_URL, requestEntity, String.class);
 
-            // Si fue exitosa, actualizamos saldo y guardamos el movimiento
+            // Si la API central no responde 2xx, devolvemos error genérico
             if (!respuestaCentral.getStatusCode().is2xxSuccessful()) {
-                return ResponseEntity.status(502).body(Map.of("error", "API central rechazó la operación"));
+                return ResponseEntity.status(502).body(Map.of(
+                        "error", "API central rechazó la operación",
+                        "detalle", respuestaCentral.getBody()
+                ));
             }
 
+            // Si llegamos hasta aquí, asumimos que la API central aceptó la transferencia
             origen.setSaldo(origen.getSaldo().subtract(monto));
             usuarioRepository.save(origen);
 
@@ -87,7 +100,11 @@ public class TransferenciaExternaEnvioController {
             mov.setFechaHora(LocalDateTime.now());
             movimientoRepository.save(mov);
 
-            return ResponseEntity.ok(Map.of("status", "ok", "msg", "Transferencia enviada correctamente"));
+            return ResponseEntity.ok(Map.of(
+                    "status", "ok",
+                    "msg", "Transferencia enviada correctamente",
+                    "respuestaCentral", respuestaCentral.getBody()
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

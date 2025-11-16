@@ -28,3 +28,4 @@ public class AuthController {
                         Map.of("error", "Usuario no encontrado")));
     }
 }
+
