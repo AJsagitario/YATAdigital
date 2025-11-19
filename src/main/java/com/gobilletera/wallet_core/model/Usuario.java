@@ -16,35 +16,41 @@ public class Usuario {
     private String numeroTarjeta;
     private String ccv;
     private String fechaVencimiento;
+    private String contacto;
+    private String pin;
+
+    public Usuario() {
+    }
 
     public Usuario(String dni, String nombre) {
         this.dni = dni;
         this.nombre = nombre;
-        this.saldo = BigDecimal.valueOf(500.00);
+        this.saldo = BigDecimal.valueOf(500);
         this.numeroTarjeta = generarNumeroTarjeta();
-        this.ccv = generarCcv();
+        this.ccv = generarCCV();
         this.fechaVencimiento = generarFechaVencimiento();
     }
 
     private String generarNumeroTarjeta() {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder num = new StringBuilder();
         for (int i = 0; i < 16; i++) {
-            sb.append((int) (Math.random() * 10));
+            num.append((int) (Math.random() * 10));
         }
-        return sb.toString();
+        return num.toString();
     }
 
-    private String generarCcv() {
+    private String generarCCV() {
         int ccv = (int) (Math.random() * 900) + 100;
         return String.valueOf(ccv);
     }
 
     private String generarFechaVencimiento() {
         java.time.LocalDate hoy = java.time.LocalDate.now();
-        java.time.LocalDate vencimiento = hoy.plusYears(3);
+        java.time.LocalDate vencimiento = hoy.plusYears(5);
         return String.format("%02d/%d", vencimiento.getMonthValue(), vencimiento.getYear());
     }
 
+    // === Getters & Setters ===
     public String getDni() {
         return dni;
     }
@@ -91,6 +97,22 @@ public class Usuario {
 
     public void setFechaVencimiento(String fechaVencimiento) {
         this.fechaVencimiento = fechaVencimiento;
+    }
+
+    public String getContacto() {
+        return contacto;
+    }
+
+    public void setContacto(String contacto) {
+        this.contacto = contacto;
+    }
+
+    public String getPin() {
+        return pin;
+    }
+
+    public void setPin(String pin) {
+        this.pin = pin;
     }
 
 }

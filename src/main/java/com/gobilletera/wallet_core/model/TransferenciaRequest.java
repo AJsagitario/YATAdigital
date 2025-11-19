@@ -6,6 +6,9 @@ public class TransferenciaRequest {
     private double monto;
     private String mensaje;
 
+    private String pin; // pin del emisor (para validar)
+    private String toAppName;
+
     public String getOrigen() {
         return origen;
     }
@@ -37,5 +40,23 @@ public class TransferenciaRequest {
     public void setMensaje(String mensaje) {
         this.mensaje = mensaje;
     }
+
+    public String getPin() {
+        return pin;
+    }
+
+    public void setPin(String pin) {
+        this.pin = pin;
+    }
+
+    public String getToAppName() {
+        return toAppName;
+    }
+
+    public void setToAppName(String toAppName) {
+        this.toAppName = toAppName;
+    }
+
+    // solo para externas, ej: "PlataYa"
 
 }

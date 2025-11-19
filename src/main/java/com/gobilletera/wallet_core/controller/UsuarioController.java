@@ -5,6 +5,8 @@ import com.gobilletera.wallet_core.model.TransferenciaRequest;
 import com.gobilletera.wallet_core.model.Usuario;
 import com.gobilletera.wallet_core.repository.MovimientoRepository;
 import com.gobilletera.wallet_core.repository.UsuarioRepository;
+import com.gobilletera.wallet_core.service.CentralApiService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +30,8 @@ public class UsuarioController {
     private UsuarioRepository usuarioRepository;
     @Autowired
     private MovimientoRepository movimientoRepository;
+    @Autowired
+    private CentralApiService centralApiService;
 
     // crear usuario
     @PostMapping
@@ -41,10 +45,31 @@ public class UsuarioController {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(errorBody);
-
         }
+
+        // este es el que tenías
         Usuario nuevoUsuario = new Usuario(usuarioRequest.getDni(), usuarioRequest.getNombre());
+
+        // 👇 seteamos el contacto que vino en el JSON
+        nuevoUsuario.setContacto(usuarioRequest.getContacto());
+
+        // 👇 NUEVO: seteamos el pin que viene del frontend
+        nuevoUsuario.setPin(usuarioRequest.getPin());
+
+        // si quisieras también permitir que mande saldo inicial desde el body:
+        if (usuarioRequest.getSaldo() != null) {
+            nuevoUsuario.setSaldo(usuarioRequest.getSaldo());
+        }
+
         usuarioRepository.save(nuevoUsuario);
+        // rEGISTRO EN API CENTRAL
+        try {
+            centralApiService.registrarWallet(nuevoUsuario);
+        } catch (Exception e) {
+            System.out.println("⚠️ Error registrando en API central: " + e.getMessage());
+            // no disparas error al frontend; solo logueas
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevoUsuario);
     }
 
@@ -81,8 +106,13 @@ public class UsuarioController {
         Usuario emisor = emisorOpt.get();
         Usuario receptor = receptorOpt.get();
 
-        BigDecimal monto = BigDecimal.valueOf(request.getMonto());
+        // 🔐 NUEVO: validar PIN
+        if (request.getPin() == null || !request.getPin().equals(emisor.getPin())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "PIN incorrecto"));
+        }
 
+        BigDecimal monto = BigDecimal.valueOf(request.getMonto());
         // validar monto minimo
         if (monto.compareTo(BigDecimal.valueOf(1.00)) < 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

@@ -24,6 +24,8 @@ public class Movimiento {
     @Column("fecha_hora")
     private LocalDateTime fechaHora;
 
+    private String contacto;
+
     public Movimiento() {
         this.id = UUID.randomUUID();
     }
@@ -37,6 +39,7 @@ public class Movimiento {
         this.mensaje = mensaje;
         this.codigoTransferencia = codigoTransferencia;
         this.fechaHora = LocalDateTime.now();
+        this.contacto = contacto;
     }
 
     public UUID getId() {
@@ -93,6 +96,14 @@ public class Movimiento {
 
     public void setFechaHora(LocalDateTime fechaHora) {
         this.fechaHora = fechaHora;
+    }
+
+    public String getContacto() {
+        return contacto;
+    }
+
+    public void setContacto(String contacto) {
+        this.contacto = contacto;
     }
 
 }
